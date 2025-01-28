@@ -6,6 +6,8 @@ pipeline{
     }
     environment {
         SCANNER_HOME=tool 'sonar-scanner'
+        IMAGE_NAME = "sushmaagowdaa/netflix" // Name of the image created in Jenkins
+        CONTAINER_NAME = "netflix" // Name of the container created in Jenkins
     }
     stages {
         stage('clean workspace'){
@@ -21,8 +23,8 @@ pipeline{
         stage("Sonarqube Analysis "){
             steps{
                 withSonarQubeEnv('sonar-server') {
-                    sh ''' $SCANNER_HOME/bin/sonar-scanner -Dsonar.projectName=Netflix \
-                    -Dsonar.projectKey=Netflix '''
+                    sh ''' $SCANNER_HOME/bin/sonar-scanner -Dsonar.projectName=DevSecOps-Project \
+                    -Dsonar.projectKey=DevSecOps-Project'''
                 }
             }
         }
@@ -46,28 +48,27 @@ pipeline{
         }
         stage('TRIVY FS SCAN') {
             steps {
-                sh "trivy fs . > trivyfs.txt"
+                sh "trivy fs . > /root/trivyfs.txt"     
             }
         }
         stage("Docker Build & Push"){
             steps{
                 script{
                    withDockerRegistry(credentialsId: 'docker', toolName: 'docker'){   
-                       sh "docker build --build-arg TMDB_V3_API_KEY=<yourtmdbapikey> -t netflix ."
-                       sh "docker tag netflix sushmagowda321/netflix:latest "
-                       sh "docker push sushmagowda321/netflix:latest "
+                       sh 'docker build --build-arg TMDB_V3_API_KEY=<yourtmdbapikey> -t $IMAGE_NAME'
+                       sh 'docker push $IMAGE_NAME'
                     }
                 }
             }
         }
         stage("TRIVY"){
             steps{
-                sh "trivy image sushmagowda321/netflix:latest > trivyimage.txt" 
+                sh "trivy image $IMAGE_NAME > /root/trivyimage.txt"
             }
         }
         stage('Deploy to container'){
             steps{
-                sh 'docker run -d -p 8081:80 sushmagowda321/netflix:latest'
+                sh 'docker run -itd --name $CONTAINER_NAME -p 8081:80 $IMAGE_NAME'
             }
         }
         stage('Deploy to kubernets'){
@@ -91,7 +92,7 @@ pipeline{
             body: "Project: ${env.JOB_NAME}<br/>" +
                 "Build Number: ${env.BUILD_NUMBER}<br/>" +
                 "URL: ${env.BUILD_URL}<br/>",
-            to: 'iambatmanthegoat@gmail.com',                                #change mail here
+            to: 'sushmaananda999@gmail.com',       #change mail here
             attachmentsPattern: 'trivyfs.txt,trivyimage.txt'
         }
     }
