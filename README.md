@@ -13,24 +13,32 @@ Step 2: Clone the Code:
 
 Step 3: Install Docker and Run the App Using a Container:
  - Set up Docker on the EC2 instance:
-   sudo apt-get update
-   sudo apt-get install docker.io -y
-   sudo usermod -aG docker $USER  # Replace with your system's username, e.g., 'ubuntu'
-   newgrp docker
-   sudo chmod 777 /var/run/docker.sock
+
+    sudo apt-get update
+
+    sudo apt-get install docker.io -y
+
+    sudo usermod -aG docker $USER  # Replace with your system's username, e.g., 'ubuntu'
+
+    newgrp docker
+
+    sudo chmod 777 /var/run/docker.sock
 
  - Build and run your application using Docker containers:
 
-    docker build -t netflix .
-    docker run -d --name netflix -p 8081:80 netflix:latest
+     docker build -t netflix .
 
-    #to delete
-    docker stop <containerid>
-    docker rmi -f netflix
+     docker run -d --name netflix -p 8081:80 netflix:latest
+
+     #to delete
+
+     docker stop <containerid>
+
+     docker rmi -f netflix
 
 It will show an error cause you need API key
 
-+Step 4: Get the API Key:
+Step 4: Get the API Key:
 
 - Open a web browser and navigate to TMDB (The Movie Database) website.
 
@@ -49,10 +57,13 @@ It will show an error cause you need API key
 Now recreate the Docker image with your api key:
 
 docker build --build-arg TMDB_V3_API_KEY=<your-api-key> -t netflix .
+
 - Access the application and check:
+
   http://<ip-address>:8081
 
 **Install Sonarqube and Trivy**
+
 Install SonarQube and Trivy on the EC2 instance to scan for vulnerabilities.
 
 Install sonarqube:
