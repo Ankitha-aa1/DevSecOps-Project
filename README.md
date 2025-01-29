@@ -21,6 +21,7 @@ Step 3: Install Docker and Run the App Using a Container:
      sudo chmod 777 /var/run/docker.sock
 
  . Build and run your application using Docker containers:
+ 
     docker build -t netflix .
     docker run -d --name netflix -p 8081:80 netflix:latest
 
@@ -41,4 +42,5 @@ Step 4: Get the API Key:
 . You will receive your TMDB API key.
 
 Now recreate the Docker image with your api key:
+
 docker build --build-arg TMDB_V3_API_KEY=<your-api-key> -t netflix .
