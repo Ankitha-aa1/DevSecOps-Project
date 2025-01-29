@@ -116,7 +116,49 @@ sudo apt-get install trivy
   6. Pipeline Stage View
 
 ### Step 3: Configure Java and Node.js in Global Tool Configuration
+
+ Global Tool Configuration is used to configure different tools that we install using Plugins
+
 - Go to `Manage Jenkins` → `Tools` → Install:
-  - JDK 17
-  - Node.js 16
+  - Nodejs16
+  - Sonar-scanner
+  - DP-Check
 - Click `Apply` and `Save`.
+
+### step 4: Configure Sonarqube and Slack in System Configuration
+
+The Configure System option is used in Jenkins to configure different server
+
+- Go to sonarqube server and create a token
+  
+  - go to `administrator` -> `security` -> `users` -> `token`
+
+- Go to system configure in jenkins
+  
+  **Sonarqube**
+
+   - select environment variables
+   - Add name [sonar-server] and add credentials
+
+  **Slack**
+
+    - Create a workspace and add channel
+    - Go to slack app and add jenkins CI to slack
+    - Get the subdomain and credentialsID
+    - add subdomain and credentials in jenkins
+    - Click on apply and save
+
+### step 5: Create a Pipeline Job
+
+   - Go to dashboard of jenkins
+   - click on new item and give name for the job then select pipeline job
+   - Create jenkins webhook
+
+      - in the build triggers select githubhook trigger for scm
+      - then go to your github repository, open settings and select webhook
+      - add payload url then select application/json in content type and save it
+
+
+
+
+
