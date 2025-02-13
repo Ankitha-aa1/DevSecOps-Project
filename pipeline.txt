@@ -5,6 +5,7 @@ pipeline{
     }
     environment {
         SCANNER_HOME=tool 'sonar-scanner'
+        NVD_API_KEY = 'your-api-key'
         IMAGE_NAME = "sushmaagowdaa/netflix" // Name of the image created in Jenkins
         CONTAINER_NAME = "netflix" // Name of the container created in Jenkins
     }
@@ -34,10 +35,12 @@ pipeline{
             }
         }
         stage('OWASP FS SCAN') {
-            steps {
-                dependencyCheck additionalArguments: '--scan ./ --disableYarnAudit --disableNodeAudit', odcInstallation: 'DP-Check'
-                dependencyCheckPublisher pattern: '**/dependency-check-report.xml'
-            }
+          steps {
+        withCredentials([string(credentialsId: 'nvd-api-key', variable: 'NVD_API_KEY')]) {
+             dependencyCheck additionalArguments: "--scan ./ --disableYarnAudit --disableNodeAudit --nvdApiKey ${NVD_API_KEY}", odcInstallation: 'DP-Check'
+             }
+             dependencyCheckPublisher pattern: '**/dependency-check-report.xml'
+          }
         }
         stage('TRIVY FS SCAN') {
             steps {
@@ -48,7 +51,7 @@ pipeline{
             steps{
                 script{
                    withDockerRegistry(credentialsId: 'docker-cred'){   
-                       sh 'docker build --build-arg TMDB_V3_API_KEY=4434ab883e16321587b56db6effdfa6c -t $IMAGE_NAME'
+                       sh 'docker build --build-arg TMDB_V3_API_KEY=api-key -t $IMAGE_NAME'
                        sh 'docker push $IMAGE_NAME'
                     }
                 }
