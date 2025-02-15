@@ -49,7 +49,7 @@ pipeline{
             steps{
                 script{
                    withDockerRegistry(credentialsId: 'docker-cred'){   
-                       sh 'docker build --build-arg TMDB_V3_API_KEY=4434ab883e16321587b56db6effdfa6c -t $IMAGE_NAME'
+                       sh 'docker build --build-arg TMDB_V3_API_KEY=4434ab883e16321587b56db6effdfa6c -t $IMAGE_NAME .'
                        sh 'docker push $IMAGE_NAME'
                     }
                 }
