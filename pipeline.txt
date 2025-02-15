@@ -5,7 +5,7 @@ pipeline{
     }
     environment {
         SCANNER_HOME=tool 'sonar-scanner'
-        NVD_API_KEY = 'your-api-key'
+        NVD_API_KEY = '4434ab883e16321587b56db6effdfa6c'
         IMAGE_NAME = "sushmaagowdaa/netflix" // Name of the image created in Jenkins
         CONTAINER_NAME = "netflix" // Name of the container created in Jenkins
     }
@@ -68,4 +68,16 @@ pipeline{
             }
         }
     }
+post {
+     always {
+        emailext attachLog: true,
+            subject: "'${currentBuild.result}'",
+            body: "Project: ${env.JOB_NAME}<br/>" +
+                "Build Number: ${env.BUILD_NUMBER}<br/>" +
+                "URL: ${env.BUILD_URL}<br/>",
+            to: 'sushmaananda999@gmail.com',                               
+            attachmentsPattern: 'trivyfs.txt,trivyimage.txt'
+        }
+    }
 }
+
