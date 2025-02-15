@@ -5,7 +5,7 @@ pipeline{
     }
     environment {
         SCANNER_HOME=tool 'sonar-scanner'
-        NVD_API_KEY = '4434ab883e16321587b56db6effdfa6c'
+        NVD_API_KEY = '920cd1a1-707d-4d34-bebb-338f0ff83fe5'
         IMAGE_NAME = "sushmaagowdaa/netflix" // Name of the image created in Jenkins
         CONTAINER_NAME = "netflix" // Name of the container created in Jenkins
     }
@@ -51,7 +51,7 @@ pipeline{
             steps{
                 script{
                    withDockerRegistry(credentialsId: 'docker-cred'){   
-                       sh 'docker build --build-arg TMDB_V3_API_KEY=api-key -t $IMAGE_NAME'
+                       sh 'docker build --build-arg TMDB_V3_API_KEY=4434ab883e16321587b56db6effdfa6c -t $IMAGE_NAME'
                        sh 'docker push $IMAGE_NAME'
                     }
                 }
