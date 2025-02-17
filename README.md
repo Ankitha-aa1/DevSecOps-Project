@@ -159,6 +159,36 @@ The Configure System option is used in Jenkins to configure different server
       - add payload url then select application/json in content type and save it
 
 
+# Phase 4: Monitoring
+
+## Install Prometheus and Grafana
+
+Set up Prometheus and Grafana to monitor your application.
+
+---
+
+## Installing Prometheus
+
+### 1. Create a dedicated Linux user for Prometheus and download Prometheus:
+```sh
+sudo useradd --system --no-create-home --shell /bin/false prometheus
+wget https://github.com/prometheus/prometheus/releases/download/v2.47.1/prometheus-2.47.1.linux-amd64.tar.gz
+
+## 2. Extract Prometheus files, move them, and create necessary directories:
+
+tar -xvf prometheus-2.47.1.linux-amd64.tar.gz
+cd prometheus-2.47.1.linux-amd64/
+sudo mkdir -p /data /etc/prometheus
+sudo mv prometheus promtool /usr/local/bin/
+sudo mv consoles/ console_libraries/ /etc/prometheus/
+sudo mv prometheus.yml /etc/prometheus/prometheus.yml
+
+## Step 3: Set Ownership
+sudo chown -R prometheus:prometheus /etc/prometheus/ /data/
+
+## Step 4: Create a systemd Service File
+sudo nano /etc/systemd/system/prometheus.service
+
 
 
 
