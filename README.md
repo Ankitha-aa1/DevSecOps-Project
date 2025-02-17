@@ -266,7 +266,8 @@ sudo systemctl enable node_exporter
 sudo systemctl start node_exporter
 
 ## Step 5: Verify Node Exporter Status
-Step 5: Verify Node Exporter Status
+sudo systemctl status node_exporter
+
 
 ** Configure Prometheus to Scrape Metrics**
 Modify /etc/prometheus/prometheus.yml:
