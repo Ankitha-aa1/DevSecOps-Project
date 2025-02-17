@@ -189,6 +189,165 @@ sudo chown -R prometheus:prometheus /etc/prometheus/ /data/
 ## Step 4: Create a systemd Service File
 sudo nano /etc/systemd/system/prometheus.service
 
+Add the following content:
+[Unit]
+Description=Prometheus
+Wants=network-online.target
+After=network-online.target
+
+StartLimitIntervalSec=500
+StartLimitBurst=5
+
+[Service]
+User=prometheus
+Group=prometheus
+Type=simple
+Restart=on-failure
+RestartSec=5s
+ExecStart=/usr/local/bin/prometheus \
+  --config.file=/etc/prometheus/prometheus.yml \
+  --storage.tsdb.path=/data \
+  --web.console.templates=/etc/prometheus/consoles \
+  --web.console.libraries=/etc/prometheus/console_libraries \
+  --web.listen-address=0.0.0.0:9090 \
+  --web.enable-lifecycle
+
+[Install]
+WantedBy=multi-user.target
+
+## Step 5: Enable and Start Prometheus
+sudo systemctl enable prometheus
+sudo systemctl start prometheus
+
+## Step 6: Verify Prometheus Status
+sudo systemctl status prometheus
+
+## Access Prometheus via:
+http://<your-server-ip>:9090
 
 
+** Installing Node Exporter **
+##Step 1: Create a Dedicated User and Download Node Exporter
+sudo useradd --system --no-create-home --shell /bin/false node_exporter
+wget https://github.com/prometheus/node_exporter/releases/download/v1.6.1/node_exporter-1.6.1.linux-amd64.tar.gz
 
+## Step 2: Extract and Move Files
+tar -xvf node_exporter-1.6.1.linux-amd64.tar.gz
+sudo mv node_exporter-1.6.1.linux-amd64/node_exporter /usr/local/bin/
+rm -rf node_exporter*
+
+## Step 3: Create a systemd Service File
+sudo nano /etc/systemd/system/node_exporter.service
+
+
+## Add the following content:
+[Unit]
+Description=Node Exporter
+Wants=network-online.target
+After=network-online.target
+
+StartLimitIntervalSec=500
+StartLimitBurst=5
+
+[Service]
+User=node_exporter
+Group=node_exporter
+Type=simple
+Restart=on-failure
+RestartSec=5s
+ExecStart=/usr/local/bin/node_exporter --collector.logind
+
+[Install]
+WantedBy=multi-user.target
+
+
+**Step 4: Enable and Start Node Exporter **
+sudo systemctl enable node_exporter
+sudo systemctl start node_exporter
+
+## Step 5: Verify Node Exporter Status
+Step 5: Verify Node Exporter Status
+
+** Configure Prometheus to Scrape Metrics**
+Modify /etc/prometheus/prometheus.yml:
+
+global:
+  scrape_interval: 15s
+
+scrape_configs:
+  - job_name: 'node_exporter'
+    static_configs:
+      - targets: ['localhost:9100']
+
+  - job_name: 'jenkins'
+    metrics_path: '/prometheus'
+    static_configs:
+      - targets: ['<your-jenkins-ip>:<your-jenkins-port>']
+
+## Validate Prometheus Configuration
+promtool check config /etc/prometheus/prometheus.yml
+
+##Reload Prometheus Configuration
+curl -X POST http://localhost:9090/-/reload
+
+##Access Prometheus targets:
+http://<your-prometheus-ip>:9090/targets
+
+**Installing Grafana**
+## Step 1: Install Dependencies
+sudo apt-get update
+sudo apt-get install -y apt-transport-https software-properties-common
+
+## Step 2: Add the GPG Key
+wget -q -O - https://packages.grafana.com/gpg.key | sudo apt-key add -
+
+## Step 3: Add Grafana Repository
+echo "deb https://packages.grafana.com/oss/deb stable main" | sudo tee -a /etc/apt/sources.list.d/grafana.list
+
+## Step 4: Install Grafana
+sudo apt-get update
+sudo apt-get -y install grafana
+
+## Step 5: Enable and Start Grafana
+sudo systemctl enable grafana-server
+sudo systemctl start grafana-server
+
+## Step 6: Verify Grafana Status
+sudo systemctl status grafana-server
+
+## Step 7: Access Grafana
+http://<your-server-ip>:3000
+
+Default Credentials:
+
+Username: admin
+Password: admin (change upon first login)
+
+## Step 8: Change the Default Password
+Grafana will prompt you to set a new password upon first login.
+
+** Adding Prometheus Data Source in Grafana **
+1.Click on ⚙️ Configuration in the left sidebar.
+2.Select Data Sources.
+3.Click Add data source.
+4.Choose Prometheus.
+5.In the HTTP section:
+6.Set URL to http://localhost:9090
+7.Click Save & Test.
+
+** Importing a Preconfigured Dashboard **
+1.Click on + Create in the left sidebar.
+2.Select Dashboard.
+3.Click Import.
+4.Enter the dashboard ID (e.g., 1860).
+5.Click Load.
+6.Select the Prometheus data source.
+7.Click Import.
+
+** Configure Prometheus Plugin Integration with Jenkins **
+## To monitor Jenkins with Prometheus:
+
+Install the Prometheus Metrics Plugin in Jenkins.
+Configure Jenkins to expose metrics at /prometheus.
+Update prometheus.yml as shown earlier.
+Restart Prometheus and Jenkins.
