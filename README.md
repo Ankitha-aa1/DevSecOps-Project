@@ -54,7 +54,7 @@
   http://<ip-address>:8081
   ```
 
-## Install SonarQube and Trivy
+## Phase 2: Install SonarQube and Trivy
 ### Install SonarQube
 ```bash
 sudo docker run -itd --name sonarqube -p 9000:9000 sonarqube
@@ -74,7 +74,7 @@ sudo apt-get install trivy
   trivy image <imageid>
   ```
 
-## Phase 2: CI/CD Setup to Run Netflix Using Jenkins
+## Phase 3: CI/CD Setup to Run Netflix Using Jenkins
 
 ### Step 1: Install Jenkins for Automation
 - Install Java:
@@ -115,7 +115,7 @@ sudo apt-get install trivy
   5. Slack Notification
   6. Pipeline Stage View
 
-### Step 3: Configure Java and Node.js in Global Tool Configuration
+### Step 3: Configure Java, Node.js, sonar-scanner,owasp dependency check and docker in Global Tool Configuration
 
  Global Tool Configuration is used to configure different tools that we install using Plugins
 
@@ -123,6 +123,8 @@ sudo apt-get install trivy
   - Nodejs16
   - Sonar-scanner
   - DP-Check
+  - docker
+After adding all the above names in the respective section, select install automatically and add your desired version and installation method
 - Click `Apply` and `Save`.
 
 ### step 4: Configure Sonarqube and Slack in System Configuration
@@ -148,17 +150,140 @@ The Configure System option is used in Jenkins to configure different server
     - add subdomain and credentials in jenkins
     - Click on apply and save
 
-### step 5: Create a Pipeline Job
+### step 5: Add all the required credentials in security credentials section
+
+   - Go to `credentials` -> `global` -> `add credentials`
+   - add credentials for below list:
+      - nvd-api-key
+      - tmdb-api-key
+      - docker-cred
+
+### step 6: Create a Pipeline Job and configure it
 
    - Go to dashboard of jenkins
    - click on new item and give name for the job then select pipeline job
-   - Create jenkins webhook
+   - Create jenkins webhook to automatically trigger the changes
 
       - in the build triggers select githubhook trigger for scm
       - then go to your github repository, open settings and select webhook
       - add payload url then select application/json in content type and save it
 
+   - now write a pipeline code
 
+   ```
+   pipeline{
+    agent any
+    tools{
+        nodejs 'node16'
+    }
+    environment {
+        SCANNER_HOME=tool 'sonar-scanner'
+        NVD_API_KEY = credentials('nvd-api-key')
+        TMDB_V3_API_KEY = credentials('tmdb-api-key')
+        IMAGE_NAME = "sushmaagowdaa/netflix" // Name of the image created in Jenkins
+        CONTAINER_NAME = "netflix" // Name of the container created in Jenkins
+    }
+    stages {
+        stage('clean workspace'){
+            steps{
+                cleanWs()
+            }
+        }
+        stage('Checkout from Git'){
+            steps{
+                git 'https://github.com/Sushmaa123/DevSecOps-Project.git'
+            }
+        }
+        stage("Sonarqube Analysis "){
+            steps{
+                withSonarQubeEnv('sonar-server') {
+                    sh ''' $SCANNER_HOME/bin/sonar-scanner -Dsonar.projectName=DevSecOps-Project \
+                    -Dsonar.projectKey=DevSecOps-Project'''
+                }
+            }
+        }
+       
+        stage('Install Dependencies') {
+            steps {
+                sh "npm install"
+            }
+        }
+        stage('OWASP FS SCAN') {
+             steps {
+             withCredentials([string(credentialsId: 'nvd-api-key', variable: 'NVD_API_KEY')]) {
+            dependencyCheck additionalArguments: "--scan ./ --disableYarnAudit --disableNodeAudit --nvdApiKey ${NVD_API_KEY}", odcInstallation: 'DP-Check'
+             }
+            dependencyCheckPublisher pattern: '**/dependency-check-report.xml'
+            }
+       }
+
+        stage('TRIVY FS SCAN') {
+            steps {
+                sh "trivy fs . > trivyfs.txt"     
+            }
+        }
+        stage('Clean Up Docker Resources') {
+            steps {
+                script {
+                    // Remove the specific container
+                    sh '''
+                    if docker ps -a --format '{{.Names}}' | grep -q $CONTAINER_NAME; then
+                        echo "Stopping and removing container: $CONTAINER_NAME"
+                        docker stop $CONTAINER_NAME
+                        docker rm $CONTAINER_NAME
+                    else
+                        echo "Container $CONTAINER_NAME does not exist."
+                    fi
+                    '''
+
+                    // Remove the specific image
+                    sh '''
+                    if docker images -q $IMAGE_NAME; then
+                        echo "Removing image: $IMAGE_NAME"
+                        docker rmi -f $IMAGE_NAME
+                    else
+                        echo "Image $IMAGE_NAME does not exist."
+                    fi
+                    '''
+                }
+            }
+        }
+        stage("Docker Build & Push"){
+            steps{
+                script{
+                   withDockerRegistry(credentialsId: 'docker-cred'){   
+                       sh 'docker build --build-arg TMDB_V3_API_KEY=$TMDB_V3_API_KEY -t $IMAGE_NAME .'
+                       sh 'docker push $IMAGE_NAME'
+                    }
+                }
+            }
+        }
+        stage("TRIVY"){
+            steps{
+                sh "trivy image $IMAGE_NAME > trivyimage.txt"
+            }
+        }
+        stage('Deploy to container'){
+            steps{
+                sh 'docker run -itd --name $CONTAINER_NAME -p 8081:80 $IMAGE_NAME'
+            }
+        }
+    }
+post {
+     always {
+        emailext attachLog: true,
+            subject: "'${currentBuild.result}'",
+            body: "Project: ${env.JOB_NAME}<br/>" +
+                "Build Number: ${env.BUILD_NUMBER}<br/>" +
+                "URL: ${env.BUILD_URL}<br/>",
+            to: 'your-mail@gmail.com',                               
+            attachmentsPattern: 'trivyfs.txt,trivyimage.txt'
+        }
+    }
+}
+
+```
+    
 # Phase 4: Monitoring
 
 ## Install Prometheus and Grafana
@@ -479,9 +604,3 @@ That's it! You've successfully installed and set up Grafana to work with Prometh
 
 2. **Configure Prometheus Plugin Integration:**
     - Integrate Jenkins with Prometheus to monitor the CI/CD pipeline.
-
-
-**Phase 5: Notification**
-
-1. **Implement Notification Services:**
-    - Set up email notifications in Jenkins or other notification mechanisms.
