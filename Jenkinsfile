@@ -1,8 +1,5 @@
 pipeline{
     agent any
-    tools{
-        nodejs 'node16'
-    }
     environment {
         SCANNER_HOME=tool 'sonar-scanner'
         TMDB_V3_API_KEY = credentials('tmdb-api-key')
@@ -29,11 +26,6 @@ pipeline{
             }
         }
        
-        stage('Install Dependencies') {
-            steps {
-                sh "npm install"
-            }
-        }
         stage('OWASP FS SCAN') {
              steps {
              withCredentials([string(credentialsId: 'nvd-api-key', variable: 'NVD_API_KEY')]) {
