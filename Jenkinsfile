@@ -26,7 +26,7 @@ pipeline {
 
         stage('Checkout from Git') {
             steps {
-                git branch: 'feature', url: 'git@github.com:Ankitha-aa1/DevSecOps-Project.git'
+                git credentialsId: 'ssh-key', branch: 'feature', url: 'git@github.com:Ankitha-aa1/DevSecOps-Project.git'
             }
         }
 
@@ -138,4 +138,3 @@ pipeline {
         }
     }
 }
-
