@@ -1,7 +1,8 @@
-// Define color map globally
 def COLOR_MAP = [
     'SUCCESS': 'good',
-    'FAILURE': 'danger'
+    'FAILURE': 'danger',
+    'UNSTABLE': 'warning',
+    'ABORTED': '#AAAAAA'
 ]
 
 pipeline {
@@ -126,12 +127,15 @@ pipeline {
         }
 
         always {
-            echo 'Sending Slack notification...'
-            slackSend(
-                channel: '#JENKINS NOTIFIER',
-                color: COLOR_MAP[currentBuild.currentResult],
-                message: "*${currentBuild.currentResult}:* Job ${env.JOB_NAME} build ${env.BUILD_NUMBER}\nMore info at: ${env.BUILD_URL}"
-            )
+            script {
+                echo 'Sending Slack notification...'
+                slackSend(
+                    channel: '#JENKINS NOTIFIER',
+                    color: COLOR_MAP[currentBuild.currentResult] ?: '#AAAAAA',
+                    message: "*${currentBuild.currentResult}:* Job ${env.JOB_NAME} build ${env.BUILD_NUMBER}\nMore info at: ${env.BUILD_URL}"
+                )
+            }
         }
     }
 }
+
