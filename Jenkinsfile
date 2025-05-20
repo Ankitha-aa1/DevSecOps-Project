@@ -56,31 +56,31 @@ pipeline {
 
         stage('TRIVY FS SCAN') {
             steps {
-                sh "trivy fs . > trivyfs.txt"
+                sh "trivy fs --exit-code 1 --severity HIGH,CRITICAL . > trivyfs.txt"
             }
         }
 
         stage('Clean Up Docker Resources') {
             steps {
                 script {
-                    sh '''
-                        for cname in $CONTAINER_NAME1 $CONTAINER_NAME2 $CONTAINER_NAME3; do
-                          if docker ps -a --format '{{.Names}}' | grep -q $cname; then
-                            echo "Stopping and removing container: $cname"
-                            docker stop $cname
-                            docker rm $cname
+                    sh """
+                        for cname in ${CONTAINER_NAME1} ${CONTAINER_NAME2} ${CONTAINER_NAME3}; do
+                          if docker ps -a --format '{{.Names}}' | grep -q \$cname; then
+                            echo "Stopping and removing container: \$cname"
+                            docker stop \$cname
+                            docker rm \$cname
                           else
-                            echo "Container $cname does not exist."
+                            echo "Container \$cname does not exist."
                           fi
                         done
 
-                        if [ "$(docker images -q $IMAGE_NAME)" ]; then
-                            echo "Removing image: $IMAGE_NAME"
-                            docker rmi -f $IMAGE_NAME
+                        if [ "\$(docker images -q ${IMAGE_NAME})" ]; then
+                            echo "Removing image: ${IMAGE_NAME}"
+                            docker rmi -f ${IMAGE_NAME}
                         else
-                            echo "Image $IMAGE_NAME does not exist."
+                            echo "Image ${IMAGE_NAME} does not exist."
                         fi
-                    '''
+                    """
                 }
             }
         }
@@ -100,15 +100,15 @@ pipeline {
 
         stage('TRIVY Image Scan') {
             steps {
-                sh "trivy image ${IMAGE_NAME} > trivyimage.txt"
+                sh "trivy image --exit-code 1 --severity HIGH,CRITICAL ${IMAGE_NAME} > trivyimage.txt"
             }
         }
 
         stage('Deploy to Containers') {
             steps {
-                sh "docker run -itd --name ${CONTAINER_NAME1} -p 8082:80 ${IMAGE_NAME}"
-                sh "docker run -itd --name ${CONTAINER_NAME2} -p 8083:80 ${IMAGE_NAME}"
-                sh "docker run -itd --name ${CONTAINER_NAME3} -p 8084:80 ${IMAGE_NAME}"
+                sh "docker run -d --name ${CONTAINER_NAME1} -p 8082:80 ${IMAGE_NAME}"
+                sh "docker run -d --name ${CONTAINER_NAME2} -p 8083:80 ${IMAGE_NAME}"
+                sh "docker run -d --name ${CONTAINER_NAME3} -p 8084:80 ${IMAGE_NAME}"
             }
         }
     }
@@ -131,7 +131,7 @@ pipeline {
         always {
             script {
                 slackSend(
-                    channel: '#JENKINS-NOTIFIER',  // update as needed
+                    channel: '#JENKINS-NOTIFIER',
                     color: COLOR_MAP[currentBuild.currentResult] ?: '#AAAAAA',
                     message: "*${currentBuild.currentResult}:* Job ${env.JOB_NAME} build ${env.BUILD_NUMBER}\nMore info at: ${env.BUILD_URL}"
                 )
