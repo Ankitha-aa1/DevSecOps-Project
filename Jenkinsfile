@@ -15,14 +15,19 @@ pipeline {
 
         stage('Setup known_hosts') {
             steps {
-                sh 'mkdir -p ~/.ssh'
-                sh 'ssh-keyscan github.com >> ~/.ssh/known_hosts'
+                sh '''
+                mkdir -p ~/.ssh
+                ssh-keyscan github.com >> ~/.ssh/known_hosts
+                chmod 644 ~/.ssh/known_hosts
+                '''
             }
         }
 
         stage('Checkout from Git') {
             steps {
-                git branch: 'feature', url: 'https://github.com/Ankitha-aa1/DevSecOps-Project.git'
+                sshagent(['github-ssh-key']) {
+                    git branch: 'feature', url: 'git@github.com:Ankitha-aa1/DevSecOps-Project.git'
+                }
             }
         }
 
@@ -99,7 +104,6 @@ pipeline {
             }
         }
     }
-
     post {
         always {
             script {
@@ -128,3 +132,5 @@ pipeline {
         }
     }
 }
+
+        
