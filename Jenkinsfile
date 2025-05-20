@@ -16,9 +16,9 @@ pipeline {
         stage('Setup known_hosts') {
             steps {
                 sh '''
-                mkdir -p ~/.ssh
-                ssh-keyscan github.com >> ~/.ssh/known_hosts
-                chmod 644 ~/.ssh/known_hosts
+                    mkdir -p ~/.ssh
+                    ssh-keyscan github.com >> ~/.ssh/known_hosts
+                    chmod 644 ~/.ssh/known_hosts
                 '''
             }
         }
@@ -104,6 +104,7 @@ pipeline {
             }
         }
     }
+
     post {
         always {
             script {
@@ -132,5 +133,3 @@ pipeline {
         }
     }
 }
-
-        
