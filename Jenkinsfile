@@ -34,11 +34,11 @@ pipeline {
         stage("SonarQube Analysis") {
             steps {
                 withSonarQubeEnv('sonar-server') {
-                    sh '''
+                    sh """
                         $SCANNER_HOME/bin/sonar-scanner \
                         -Dsonar.projectName=DevSecOps-Project \
                         -Dsonar.projectKey=DevSecOps-Project
-                    '''
+                    """
                 }
             }
         }
@@ -54,29 +54,28 @@ pipeline {
 
         stage('Trivy Filesystem Scan') {
             steps {
-                sh "trivy fs . > trivyfs.txt"
+                sh "trivy fs . | tee trivyfs.txt"
             }
         }
 
         stage('Clean Up Docker Resources') {
             steps {
                 script {
-                    sh '''
-                        if docker ps -a --format '{{.Names}}' | grep -q $CONTAINER_NAME; then
-                            echo "Stopping and removing container: $CONTAINER_NAME"
-                            docker stop $CONTAINER_NAME
-                            docker rm $CONTAINER_NAME
+                    sh """
+                        if docker ps -a --format '{{.Names}}' | grep -q '^${CONTAINER_NAME}\$'; then
+                            echo "Stopping and removing container: ${CONTAINER_NAME}"
+                            docker rm -f ${CONTAINER_NAME}
                         else
-                            echo "Container $CONTAINER_NAME does not exist."
+                            echo "Container ${CONTAINER_NAME} does not exist."
                         fi
 
-                        if docker images -q $IMAGE_NAME; then
-                            echo "Removing image: $IMAGE_NAME"
-                            docker rmi -f $IMAGE_NAME
+                        if docker images -q ${IMAGE_NAME}; then
+                            echo "Removing image: ${IMAGE_NAME}"
+                            docker rmi -f ${IMAGE_NAME}
                         else
-                            echo "Image $IMAGE_NAME does not exist."
+                            echo "Image ${IMAGE_NAME} does not exist."
                         fi
-                    '''
+                    """
                 }
             }
         }
@@ -85,8 +84,8 @@ pipeline {
             steps {
                 script {
                     withDockerRegistry(credentialsId: 'docker-cred') {
-                        sh 'docker build --build-arg TMDB_V3_API_KEY=$TMDB_V3_API_KEY -t $IMAGE_NAME .'
-                        sh 'docker push $IMAGE_NAME'
+                        sh "docker build --build-arg TMDB_V3_API_KEY=${TMDB_V3_API_KEY} -t ${IMAGE_NAME} ."
+                        sh "docker push ${IMAGE_NAME}"
                     }
                 }
             }
@@ -94,13 +93,13 @@ pipeline {
 
         stage("Trivy Image Scan") {
             steps {
-                sh "trivy image $IMAGE_NAME > trivyimage.txt"
+                sh "trivy image ${IMAGE_NAME} | tee trivyimage.txt"
             }
         }
 
         stage('Deploy to Container') {
             steps {
-                sh 'docker run -itd --name $CONTAINER_NAME -p 8081:80 $IMAGE_NAME'
+                sh "docker run -d --name ${CONTAINER_NAME} -p 8081:80 ${IMAGE_NAME}"
             }
         }
     }
