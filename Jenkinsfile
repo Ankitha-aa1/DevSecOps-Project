@@ -34,12 +34,12 @@ pipeline {
             steps {
                 withSonarQubeEnv('sonar-server') {
                     withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_TOKEN')]) {
-                        sh '''
-                            $SCANNER_HOME/bin/sonar-scanner \
+                        sh """
+                            ${SCANNER_HOME}/bin/sonar-scanner \
                             -Dsonar.projectName=DevSecOps-Project \
                             -Dsonar.projectKey=DevSecOps-Project \
-                            -Dsonar.login=$SONAR_TOKEN
-                        '''
+                            -Dsonar.login=${SONAR_TOKEN}
+                        """
                     }
                 }
             }
@@ -74,7 +74,7 @@ pipeline {
                           fi
                         done
 
-                        if docker images -q $IMAGE_NAME > /dev/null; then
+                        if [ "$(docker images -q $IMAGE_NAME)" ]; then
                             echo "Removing image: $IMAGE_NAME"
                             docker rmi -f $IMAGE_NAME
                         else
@@ -89,8 +89,10 @@ pipeline {
             steps {
                 script {
                     withDockerRegistry(credentialsId: 'docker-cred') {
-                        sh 'docker build --build-arg TMDB_V3_API_KEY=$TMDB_V3_API_KEY -t $IMAGE_NAME .'
-                        sh 'docker push $IMAGE_NAME'
+                        sh """
+                            docker build --build-arg TMDB_V3_API_KEY=${TMDB_V3_API_KEY} -t ${IMAGE_NAME} .
+                        """
+                        sh "docker push ${IMAGE_NAME}"
                     }
                 }
             }
@@ -98,15 +100,15 @@ pipeline {
 
         stage('TRIVY Image Scan') {
             steps {
-                sh "trivy image $IMAGE_NAME > trivyimage.txt"
+                sh "trivy image ${IMAGE_NAME} > trivyimage.txt"
             }
         }
 
         stage('Deploy to Containers') {
             steps {
-                sh 'docker run -itd --name $CONTAINER_NAME1 -p 8082:80 $IMAGE_NAME'
-                sh 'docker run -itd --name $CONTAINER_NAME2 -p 8083:80 $IMAGE_NAME'
-                sh 'docker run -itd --name $CONTAINER_NAME3 -p 8084:80 $IMAGE_NAME'
+                sh "docker run -itd --name ${CONTAINER_NAME1} -p 8082:80 ${IMAGE_NAME}"
+                sh "docker run -itd --name ${CONTAINER_NAME2} -p 8083:80 ${IMAGE_NAME}"
+                sh "docker run -itd --name ${CONTAINER_NAME3} -p 8084:80 ${IMAGE_NAME}"
             }
         }
     }
@@ -128,9 +130,8 @@ pipeline {
 
         always {
             script {
-                echo 'Sending Slack notification...'
                 slackSend(
-                    channel: '#JENKINS NOTIFIER',
+                    channel: '#JENKINS-NOTIFIER',  // update as needed
                     color: COLOR_MAP[currentBuild.currentResult] ?: '#AAAAAA',
                     message: "*${currentBuild.currentResult}:* Job ${env.JOB_NAME} build ${env.BUILD_NUMBER}\nMore info at: ${env.BUILD_URL}"
                 )
