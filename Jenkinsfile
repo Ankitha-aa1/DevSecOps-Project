@@ -13,6 +13,13 @@ pipeline {
             }
         }
 
+        stage('Setup known_hosts') {
+            steps {
+                sh 'mkdir -p ~/.ssh'
+                sh 'ssh-keyscan github.com >> ~/.ssh/known_hosts'
+            }
+        }
+
         stage('Checkout from Git') {
             steps {
                 git branch: 'feature', url: 'https://github.com/Ankitha-aa1/DevSecOps-Project.git'
