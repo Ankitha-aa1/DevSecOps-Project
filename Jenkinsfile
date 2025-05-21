@@ -1,80 +1,58 @@
 def COLOR_MAP = [
     'SUCCESS': 'good',
     'FAILURE': 'danger'
-    ]
-pipeline{
+]
+
+pipeline {
     agent any
+
     environment {
-        SCANNER_HOME=tool 'sonar-scanner'
+        SCANNER_HOME = tool 'sonar-scanner'
         TMDB_V3_API_KEY = credentials('tmdb-api-key')
-        IMAGE_NAME = "ankii1212/netflix" // Name of the image created in Jenkins
-        // CONTAINER_NAME1 = "netflix1" // Name of the container created in Jenkins
-        // CONTAINER_NAME2 = "netflix2"
-        // CONTAINER_NAME3 = "netflix3"
+        IMAGE_NAME = "ankii1212/netflix"
         CONTAINERS = 'container1,container2,container3'
         PORTS = '8082,8083,8084'
     }
+
     stages {
-        stage('clean workspace'){
-            steps{
+        stage('Clean Workspace') {
+            steps {
                 cleanWs()
             }
         }
-        stage('Checkout from Git'){
-            steps{
-                git branch: 'feature',  credentialsId: 'github-token', url: 'https://github.com/Ankitha-aa1/DevSecOps-Project.git'
+
+        stage('Checkout from Git') {
+            steps {
+                git branch: 'feature', credentialsId: 'github-token', url: 'https://github.com/Ankitha-aa1/DevSecOps-Project.git'
             }
         }
-        stage("Sonarqube Analysis "){
-            steps{
+
+        stage('Sonarqube Analysis') {
+            steps {
                 withSonarQubeEnv('sonar-server') {
-                     withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_TOKEN')]) {
-                    sh ''' $SCANNER_HOME/bin/sonar-scanner -Dsonar.projectName=DevSecOps-Project \
-                    -Dsonar.projectKey=DevSecOps-Project'''
+                    withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_TOKEN')]) {
+                        sh '''$SCANNER_HOME/bin/sonar-scanner -Dsonar.projectName=DevSecOps-Project \
+                        -Dsonar.projectKey=DevSecOps-Project'''
+                    }
                 }
             }
         }
-       
+
         stage('OWASP FS SCAN') {
-             steps {
-             withCredentials([string(credentialsId: 'nvd-api-key', variable: 'NVD_API_KEY')]) {
-            dependencyCheck additionalArguments: "--scan ./ --disableYarnAudit --disableNodeAudit --nvdApiKey ${NVD_API_KEY}", odcInstallation: 'DP-Check'
-             }
-            dependencyCheckPublisher pattern: '**/dependency-check-report.xml'
+            steps {
+                withCredentials([string(credentialsId: 'nvd-api-key', variable: 'NVD_API_KEY')]) {
+                    dependencyCheck additionalArguments: "--scan ./ --disableYarnAudit --disableNodeAudit --nvdApiKey ${NVD_API_KEY}", odcInstallation: 'DP-Check'
+                }
+                dependencyCheckPublisher pattern: '**/dependency-check-report.xml'
             }
-       }
+        }
 
         stage('TRIVY FS SCAN') {
             steps {
-                sh "trivy fs . > trivyfs.txt"     
+                sh "trivy fs . > trivyfs.txt"
             }
         }
-        // stage('Clean Up Docker Resources') {
-        //     steps {
-        //         script {
-        //             // Remove the specific container
-        //             sh '''
-        //             if docker ps -a --format '{{.Names}}' | grep -q $CONTAINER_NAME; then
-        //                 echo "Stopping and removing container: $CONTAINER_NAME"
-        //                 docker stop $CONTAINER_NAME
-        //                 docker rm $CONTAINER_NAME
-        //             else
-        //                 echo "Container $CONTAINER_NAME does not exist."
-        //             fi
-        //             '''
 
-        //             // Remove the specific image
-        //             sh '''
-        //             if docker images -q $IMAGE_NAME; then
-        //                 echo "Removing image: $IMAGE_NAME"
-        //                 docker rmi -f $IMAGE_NAME
-        //             else
-        //                 echo "Image $IMAGE_NAME does not exist."
-        //             fi
-        //             '''
-        // //         }
-        // //     }
-        // // }
         stage('Clean Up Docker Resources') {
             steps {
                 script {
@@ -103,53 +81,56 @@ pipeline{
                 }
             }
         }
-        stage("Docker Build & Push"){
-            steps{
-                script{
-                   withDockerRegistry(credentialsId: 'docker-cred'){   
-                       sh 'docker build --build-arg TMDB_V3_API_KEY=$TMDB_V3_API_KEY -t $IMAGE_NAME .'
-                       sh 'docker push $IMAGE_NAME'
+
+        stage("Docker Build & Push") {
+            steps {
+                script {
+                    withDockerRegistry(credentialsId: 'docker-cred') {
+                        sh 'docker build --build-arg TMDB_V3_API_KEY=$TMDB_V3_API_KEY -t $IMAGE_NAME .'
+                        sh 'docker push $IMAGE_NAME'
                     }
                 }
             }
         }
-        stage("TRIVY"){
-            steps{
+
+        stage("TRIVY IMAGE SCAN") {
+            steps {
                 sh "trivy image $IMAGE_NAME > trivyimage.txt"
             }
         }
-        stage('Deploy to container') {
-    steps {
-        script {
-            def containerList = env.CONTAINERS.split(',')         // e.g., web1,web2,web3
-            def portList = env.PORTS.split(',')                   // e.g., 8082,8083,8084
 
-            for (int i = 0; i < containerList.size(); i++) {
-                def container = containerList[i]
-                def port = portList[i]
-                sh "docker run -d --name ${container} -p ${port}:80 ${IMAGE_NAME}"
+        stage('Deploy to container') {
+            steps {
+                script {
+                    def containerList = env.CONTAINERS.split(',')
+                    def portList = env.PORTS.split(',')
+
+                    for (int i = 0; i < containerList.size(); i++) {
+                        def container = containerList[i]
+                        def port = portList[i]
+                        sh "docker run -d --name ${container} -p ${port}:80 ${IMAGE_NAME}"
+                    }
+                }
             }
         }
     }
-}
-    }
-post {
-     failure {
-        emailext attachLog: true,
-            subject: "'${currentBuild.result}'",
-            body: "Project: ${env.JOB_NAME}<br/>" +
-                "Build Number: ${env.BUILD_NUMBER}<br/>" +
-                "URL: ${env.BUILD_URL}<br/>",
-            to: 'mankitha91@gmail.com',                               
-            attachmentsPattern: 'trivyfs.txt,trivyimage.txt'
+
+    post {
+        failure {
+            emailext attachLog: true,
+                subject: "'${currentBuild.result}'",
+                body: "Project: ${env.JOB_NAME}<br/>" +
+                      "Build Number: ${env.BUILD_NUMBER}<br/>" +
+                      "URL: ${env.BUILD_URL}<br/>",
+                to: 'mankitha91@gmail.com',
+                attachmentsPattern: 'trivyfs.txt,trivyimage.txt'
         }
 
         always {
-            echo 'slack Notification.'
+            echo 'Slack Notification.'
             slackSend channel: '#all-netflix',
-            color: COLOR_MAP [currentBuild.currentResult],
-            message: "*${currentBuild.currentResult}:* Job ${env.JOB_NAME} build ${env.BUILD_NUMBER} \n More info at: ${env.BUILD_URl}"
-            
+                color: COLOR_MAP[currentBuild.currentResult],
+                message: "*${currentBuild.currentResult}:* Job ${env.JOB_NAME} build ${env.BUILD_NUMBER} \nMore info at: ${env.BUILD_URL}"
         }
     }
 }
